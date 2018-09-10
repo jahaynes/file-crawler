@@ -11,21 +11,29 @@ import Control.Monad.IO.Class             (liftIO)
 import Control.Monad.Trans.Resource       (MonadResource, runResourceT)
 import Data.ByteString.Char8        as C8 (ByteString, pack, length, readFile)
 import Data.Conduit                       (ConduitM, awaitForever, mapOutput, runConduit, yield, (.|))
+import Data.Conduit.List            as CL (filter)
 import Data.Conduit.Combinators           (sourceDirectoryDeep, sinkFile)
+import Data.List                          (isSuffixOf)
 import System.Environment                 (getArgs)
 
 usage :: String
-usage = "usage: file-crawler destFile startPath"
+usage = "usage: file-crawler destFile startPath [filesuffix]"
+
+filterEnd :: Maybe String -> String -> Bool
+filterEnd   Nothing     _ = True
+filterEnd (Just fe) fname = fe `isSuffixOf` fname
 
 main :: IO ()
 main = do
     args <- getArgs
-    let [destFile, startPath] = case Prelude.length args of
-                                    2 -> args
-				    _ -> error usage
+    let (destFile, startPath, fe) = case args of
+                                        [a,b,c] -> (a,b,Just c)
+                                        [a,b]   -> (a,b,Nothing)
+                                        _       -> error usage
     let followSymlinks = False
     runResourceT $
         runConduit $ sourceDirectoryDeep followSymlinks startPath
+                  .| CL.filter (filterEnd fe)
                   .| withContents
                   .| mapOutput toByteString toWarcEntry
                   .| sinkFile destFile
