@@ -14,11 +14,15 @@ import Data.Conduit                       (ConduitM, awaitForever, mapOutput, ru
 import Data.Conduit.Combinators           (sourceDirectoryDeep, sinkFile)
 import System.Environment                 (getArgs)
 
+usage :: String
+usage = "usage: file-crawler destFile startPath"
+
 main :: IO ()
 main = do
     args <- getArgs
-    print args
-    let [destFile, startPath] = args
+    let [destFile, startPath] = case Prelude.length args of
+                                    2 -> args
+				    _ -> error usage
     let followSymlinks = False
     runResourceT $
         runConduit $ sourceDirectoryDeep followSymlinks startPath
